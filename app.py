@@ -91,3 +91,4 @@ if prompt := (st.chat_input("Yahan message likhein...") or user_input):
     with st.chat_message("assistant"):
         st.write(reply)
     st.session_state.messages.append({"role": "assistant", "content": reply})
+    from duckduckgo_search import DDGS
