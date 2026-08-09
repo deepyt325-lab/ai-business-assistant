@@ -2,14 +2,14 @@ import streamlit as st
 from google import genai
 import os
 
-# --- PAGE CONFIGURATION ---
+# --- 1. PAGE SETUP ---
 st.set_page_config(
-    page_title="Ultra AI Assistant",
+    page_title="AI Assistant",
     page_icon="⚡",
     layout="centered"
 )
 
-# --- MODERN STYLING (CSS) ---
+# --- 2. CLEAN & MODERN LOOK (CSS) ---
 st.markdown("""
     <style>
     .stApp {
@@ -23,12 +23,13 @@ st.markdown("""
         background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        margin-bottom: 5px;
     }
     .sub-title {
         text-align: center;
         color: #8b949e;
         font-size: 0.9rem;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
     div.stButton > button {
         width: 100%;
@@ -40,82 +41,65 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- GEMINI CLIENT SETUP ---
+# --- 3. SAFE API KEY CHECK ---
 api_key = os.environ.get("GEMINI_API_KEY", "")
 
-# --- SIDEBAR ---
+# --- 4. SIDEBAR SETTINGS ---
 with st.sidebar:
     st.title("⚙️ Settings")
-    if api_key:
-        st.write("Status: 🟢 **AI Connected**")
-    else:
-        st.write("Status: 🔴 **API Key Missing**")
+    if not api_key:
         api_key = st.text_input("Enter Gemini API Key:", type="password")
-
+    else:
+        st.success("🟢 API Connected")
+    
     st.markdown("---")
     if st.button("🗑️ Clear Chat History", key="clear_chat_key"):
         st.session_state.messages = []
         st.rerun()
 
-# --- HEADER SECTION ---
+# --- 5. HEADER SECTION ---
 st.markdown("<h1 class='main-title'>⚡ Ultra AI Assistant</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-title'>Fast, Smart & Always Ready</p>", unsafe_allow_html=True)
 
-# --- CHAT HISTORY INITIALIZATION ---
+# --- 6. CHAT HISTORY INITIALIZATION ---
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "Haan ji bhai! Main aapki kya madad kar sakta hoon?"}
     ]
 
-# --- QUICK SUGGESTIONS ---
-if len(st.session_state.messages) <= 1:
-    st.write("**Quick Suggestions:**")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("💡 Creative Ideas", key="btn_ideas_key"):
-            st.session_state.prompt_input = "Mujhe 3 unique business ideas batao."
-    with col2:
-        if st.button("📝 Email Writer", key="btn_email_key"):
-            st.session_state.prompt_input = "Ek professional leave application email likho."
-
-# --- DISPLAY CHAT MESSAGES ---
+# --- 7. DISPLAY CHAT MESSAGES ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# --- HANDLE QUICK SUGGESTION CLICK ---
-user_input = ""
-if "prompt_input" in st.session_state and st.session_state.prompt_input:
-    user_input = st.session_state.prompt_input
-    st.session_state.prompt_input = ""
-
-# --- CHAT INPUT & AI GENERATION ---
-if prompt := (st.chat_input("Yahan message likhein...") or user_input):
+# --- 8. CHAT INPUT & AI RESPONSE ---
+if prompt := st.chat_input("Yahan message likhein..."):
+    # User message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
+    # AI response
     with st.chat_message("assistant"):
         if not api_key:
-            reply = "⚠️ Please sidebar me apni **GEMINI_API_KEY** daalein taaki AI jawaab de sake!"
+            reply = "⚠️ Sidebar me apni **GEMINI_API_KEY** daalein taaki AI baat kar sake."
             st.warning(reply)
         else:
             try:
                 client = genai.Client(api_key=api_key)
                 
-                # Convert session history to Gemini chat format
-                formatted_contents = []
+                # Build chat history for Gemini
+                contents = []
                 for msg in st.session_state.messages:
                     role = "user" if msg["role"] == "user" else "model"
-                    formatted_contents.append({
+                    contents.append({
                         "role": role,
                         "parts": [{"text": msg["content"]}]
                     })
-                
+
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
-                    contents=formatted_contents,
+                    contents=contents,
                 )
                 reply = response.text
                 st.write(reply)
