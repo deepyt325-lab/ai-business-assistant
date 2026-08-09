@@ -63,3 +63,74 @@ if prompt := st.chat_input("Poocho jo poochna hai..."):
 
         except Exception as e:
             st.error(f"Error: {e}")
+            import streamlit as st
+
+# --- PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="AI Assistant",
+    page_icon="🤖",
+    layout="centered"
+)
+
+# --- CLEAN & MODERN LOOK (CSS) ---
+st.markdown("""
+    <style>
+    /* Background Color */
+    .stApp {
+        background-color: #0E1117;
+        color: #FFFFFF;
+    }
+    
+    /* Header Styling */
+    .main-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        text-align: center;
+        background: linear-gradient(90deg, #4F46E5, #06B6D4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 5px;
+    }
+    .sub-title {
+        text-align: center;
+        color: #9CA3AF;
+        font-size: 0.95rem;
+        margin-bottom: 25px;
+    }
+    
+    /* Chat Box Style */
+    .stChatMessage {
+        border-radius: 12px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- HEADER SECTION ---
+st.markdown("<h1 class='main-title'>🤖 My AI Assistant</h1>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Aapka apna personal intelligent assistant</p>", unsafe_allow_html=True)
+
+# --- CHAT HISTORY INITIALIZATION ---
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Haan ji bhai! Kaise help karun aapki aaj?"}
+    ]
+
+# --- DISPLAY CHAT MESSAGES ---
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+# --- CHAT INPUT ---
+if prompt := st.chat_input("Yahan apna message likhein..."):
+    # User Message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.write(prompt)
+
+    # AI Reply (Basic Reply)
+    reply = f"Aapne bola: '{prompt}'. Design kaisa lag raha hai app ka?"
+    with st.chat_message("assistant"):
+        st.write(reply)
+    st.session_state.messages.append({"role": "assistant", "content": reply})
