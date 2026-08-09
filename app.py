@@ -1,4 +1,5 @@
 import streamlit as st
+from duckduckgo_search import DDGS
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -41,6 +42,7 @@ st.markdown("""
 # --- SIDEBAR ---
 with st.sidebar:
     st.title("⚙️ Settings")
+    enable_search = st.toggle("🌐 Enable Web Search", value=False)
     st.write("Status: 🟢 **Online**")
     st.markdown("---")
     if st.button("🗑️ Clear Chat History", key="clear_chat_key"):
