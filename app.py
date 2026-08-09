@@ -41,7 +41,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- GEMINI CLIENT SETUP ---
-api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
+api_key = os.environ.get("GEMINI_API_KEY", "")
 
 # --- SIDEBAR ---
 with st.sidebar:
