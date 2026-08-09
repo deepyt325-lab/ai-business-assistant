@@ -1,5 +1,6 @@
 import streamlit as st
-from duckduckgo_search import DDGS
+from google import genai
+import os
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -39,11 +40,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- GEMINI CLIENT SETUP ---
+api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
+
 # --- SIDEBAR ---
 with st.sidebar:
     st.title("⚙️ Settings")
-    enable_search = st.toggle("🌐 Enable Web Search", value=False)
-    st.write("Status: 🟢 **Online**")
+    if api_key:
+        st.write("Status: 🟢 **AI Connected**")
+    else:
+        st.write("Status: 🔴 **API Key Missing**")
+        api_key = st.text_input("Enter Gemini API Key:", type="password")
+
     st.markdown("---")
     if st.button("🗑️ Clear Chat History", key="clear_chat_key"):
         st.session_state.messages = []
@@ -82,15 +90,37 @@ if "prompt_input" in st.session_state and st.session_state.prompt_input:
     user_input = st.session_state.prompt_input
     st.session_state.prompt_input = ""
 
-# --- CHAT INPUT ---
+# --- CHAT INPUT & AI GENERATION ---
 if prompt := (st.chat_input("Yahan message likhein...") or user_input):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
-    reply = f"Aapne poocha: **'{prompt}'**. App design ready hai!"
-    
     with st.chat_message("assistant"):
-        st.write(reply)
+        if not api_key:
+            reply = "⚠️ Please sidebar me apni **GEMINI_API_KEY** daalein taaki AI jawaab de sake!"
+            st.warning(reply)
+        else:
+            try:
+                client = genai.Client(api_key=api_key)
+                
+                # Convert session history to Gemini chat format
+                formatted_contents = []
+                for msg in st.session_state.messages:
+                    role = "user" if msg["role"] == "user" else "model"
+                    formatted_contents.append({
+                        "role": role,
+                        "parts": [{"text": msg["content"]}]
+                    })
+                
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=formatted_contents,
+                )
+                reply = response.text
+                st.write(reply)
+            except Exception as e:
+                reply = f"Error: {str(e)}"
+                st.error(reply)
+
     st.session_state.messages.append({"role": "assistant", "content": reply})
-    from duckduckgo_search import DDGS
