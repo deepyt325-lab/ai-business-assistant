@@ -1,6 +1,7 @@
 import streamlit as st
 from groq import Groq
 import os
+import json
 import uuid
 from datetime import datetime
 
@@ -10,12 +11,32 @@ st.set_page_config(page_title="Nexus AI", page_icon="⚡", layout="wide")
 # Fetch API Key from Render Environment
 API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-# Initialize Main Storage in Session State
+# File path for storing permanent chats
+STORAGE_FILE = "chat_history.json"
+
+# Helper functions to load and save chat history to local JSON file
+def load_chats():
+    if os.path.exists(STORAGE_FILE):
+        try:
+            with open(STORAGE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_chats(chats):
+    with open(STORAGE_FILE, "w") as f:
+        json.dump(chats, f, indent=4)
+
+# Initialize Main Storage
 if "chats" not in st.session_state:
-    st.session_state.chats = {}
+    st.session_state.chats = load_chats()
 
 if "current_chat_id" not in st.session_state:
-    st.session_state.current_chat_id = None
+    if st.session_state.chats:
+        st.session_state.current_chat_id = list(st.session_state.chats.keys())[-1]
+    else:
+        st.session_state.current_chat_id = None
 
 # System Prompt for Flexible Multi-Language Response
 SYSTEM_PROMPT = {
@@ -33,6 +54,7 @@ def create_new_chat():
         ]
     }
     st.session_state.current_chat_id = chat_id
+    save_chats(st.session_state.chats)
 
 # Create initial chat if none exists
 if not st.session_state.chats:
@@ -67,6 +89,7 @@ with st.sidebar:
         with col2:
             if st.button("🗑️", key=f"del_{cid}"):
                 del st.session_state.chats[cid]
+                save_chats(st.session_state.chats)
                 if st.session_state.current_chat_id == cid:
                     remaining_ids = list(st.session_state.chats.keys())
                     if remaining_ids:
@@ -91,6 +114,7 @@ with col_edit:
     new_name = st.text_input("Rename Chat:", value=current_chat["title"], key=f"rename_{current_id}")
     if new_name != current_chat["title"]:
         st.session_state.chats[current_id]["title"] = new_name
+        save_chats(st.session_state.chats)
         st.rerun()
 
 # Display Current Conversation Messages
@@ -107,6 +131,8 @@ if prompt := st.chat_input("Type a message..."):
     if current_chat["title"].startswith("New Chat") and len(current_chat["messages"]) == 2:
         auto_title = prompt[:25] + "..." if len(prompt) > 25 else prompt
         st.session_state.chats[current_id]["title"] = auto_title
+
+    save_chats(st.session_state.chats)
 
     with st.chat_message("user"):
         st.write(prompt)
@@ -137,5 +163,6 @@ if prompt := st.chat_input("Type a message..."):
                 
                 # Save Assistant Response to Active Chat History
                 st.session_state.chats[current_id]["messages"].append({"role": "assistant", "content": reply})
+                save_chats(st.session_state.chats)
             except Exception as e:
                 st.error(f"Error: {e}")
