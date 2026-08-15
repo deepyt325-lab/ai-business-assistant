@@ -5,16 +5,20 @@ import json
 import uuid
 from datetime import datetime
 
-# Page Configuration
-st.set_page_config(page_title="Nexus AI", page_icon="⚡", layout="wide")
+# Page Configuration with Custom Layout
+st.set_page_config(
+    page_title="Nexus AI - Pro Platform",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # Fetch API Key from Render Environment
 API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-# File path for storing permanent chats
+# Permanent Local File Storage
 STORAGE_FILE = "chat_history.json"
 
-# Helper functions to load and save chat history to local JSON file
 def load_chats():
     if os.path.exists(STORAGE_FILE):
         try:
@@ -28,7 +32,7 @@ def save_chats(chats):
     with open(STORAGE_FILE, "w") as f:
         json.dump(chats, f, indent=4)
 
-# Initialize Main Storage
+# Initialize Session States
 if "chats" not in st.session_state:
     st.session_state.chats = load_chats()
 
@@ -38,50 +42,47 @@ if "current_chat_id" not in st.session_state:
     else:
         st.session_state.current_chat_id = None
 
-# System Prompt for Flexible Multi-Language Response
-SYSTEM_PROMPT = {
-    "role": "system",
-    "content": "You are Nexus AI, a highly capable assistant. Respond naturally in whichever language or script the user writes in (Hinglish, Hindi, English, etc.). Be helpful, smart, and direct."
-}
-
-# Function to Create a New Chat Session
+# Function to Create New Chat Session
 def create_new_chat():
     chat_id = str(uuid.uuid4())
     st.session_state.chats[chat_id] = {
         "title": f"New Chat ({datetime.now().strftime('%H:%M')})",
         "messages": [
-            {"role": "assistant", "content": "Hello! How can I help you today?"}
+            {"role": "assistant", "content": "Welcome to Nexus AI Pro! How can I assist you today?"}
         ]
     }
     st.session_state.current_chat_id = chat_id
     save_chats(st.session_state.chats)
 
-# Create initial chat if none exists
 if not st.session_state.chats:
     create_new_chat()
 
-# Sidebar Setup
+# System Prompt Configuration
+SYSTEM_PROMPT = {
+    "role": "system",
+    "content": "You are Nexus AI Pro, an advanced AI system. Respond intelligently and naturally in the language used by the user (English, Hinglish, Hindi, etc.). Keep formatting clean and helpful."
+}
+
+# ----------------- SIDEBAR SETUP & CONTROL PANEL -----------------
 with st.sidebar:
-    st.title("⚡ Nexus AI")
+    st.markdown("<h2 style='text-align: center; color: #4F46E5;'>⚡ Nexus AI Pro</h2>", unsafe_allow_html=True)
+    st.markdown("---")
     
     # New Chat Button
-    if st.button("➕ New Chat", use_container_width=True):
+    if st.button("➕ New Chat Session", use_container_width=True, type="primary"):
         create_new_chat()
         st.rerun()
 
-    st.markdown("---")
-    st.subheader("🗂️ Chat History")
+    st.markdown("### 🗂️ Conversation History")
 
     # List and Select Previous Chats
     chat_ids = list(st.session_state.chats.keys())
     for cid in reversed(chat_ids):
         chat = st.session_state.chats[cid]
-        
-        # Highlight active chat
         is_active = (cid == st.session_state.current_chat_id)
         button_label = f"💬 {chat['title']}" if not is_active else f"👉 {chat['title']}"
         
-        col1, col2 = st.columns([0.8, 0.2])
+        col1, col2 = st.columns([0.85, 0.15])
         with col1:
             if st.button(button_label, key=f"select_{cid}", use_container_width=True):
                 st.session_state.current_chat_id = cid
@@ -99,37 +100,62 @@ with st.sidebar:
                 st.rerun()
 
     st.markdown("---")
-    st.caption("Powered by Groq Llama-3.3")
+    
+    # Advanced Setup Controls
+    with st.expander("⚙️ AI Response Setup", expanded=False):
+        temperature = st.slider("Creativity (Temperature)", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
+        max_tokens = st.slider("Max Response Length", min_value=256, max_value=4096, value=2048, step=256)
 
-# Get Current Chat Data
+    st.markdown("---")
+    # System Metrics / Status Widget
+    st.markdown("#### 🌐 System Status")
+    st.caption("• Core Engine: **Groq Llama-3.3-70B**")
+    st.caption("• Status: 🟢 **Operational**")
+    st.caption("• Latency: **Ultra-Low (<1s)**")
+
+# ----------------- MAIN INTERFACE -----------------
 current_id = st.session_state.current_chat_id
 current_chat = st.session_state.chats[current_id]
 
-# Chat Title & Editing Header
-col_title, col_edit = st.columns([0.7, 0.3])
+# Top Control Bar & Header
+col_title, col_edit, col_export = st.columns([0.5, 0.3, 0.2])
+
 with col_title:
-    st.title(current_chat["title"])
+    st.subheader(f"📌 {current_chat['title']}")
 
 with col_edit:
-    new_name = st.text_input("Rename Chat:", value=current_chat["title"], key=f"rename_{current_id}")
+    new_name = st.text_input("Rename Session:", value=current_chat["title"], key=f"rename_{current_id}", label_visibility="collapsed")
     if new_name != current_chat["title"]:
         st.session_state.chats[current_id]["title"] = new_name
         save_chats(st.session_state.chats)
         st.rerun()
 
-# Display Current Conversation Messages
+with col_export:
+    # Export Chat to Text File
+    chat_text = "\n\n".join([f"{m['role'].upper()}: {m['content']}" for m in current_chat["messages"]])
+    st.download_button(
+        label="📥 Export Chat",
+        data=chat_text,
+        file_name=f"{current_chat['title'].replace(' ', '_')}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+
+st.markdown("---")
+
+# Display Messages
 for msg in current_chat["messages"]:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# Chat Input & AI Response Generation
-if prompt := st.chat_input("Type a message..."):
-    # Append User Message to Active Chat History
+# Chat Input & Processing
+if prompt := st.chat_input("Ask Nexus AI anything..."):
+    # Append User Message
     st.session_state.chats[current_id]["messages"].append({"role": "user", "content": prompt})
     
-    # Auto-rename "New Chat" on first query
+    # Auto Title Generator for New Chats
     if current_chat["title"].startswith("New Chat") and len(current_chat["messages"]) == 2:
-        auto_title = prompt[:25] + "..." if len(prompt) > 25 else prompt
+        auto_title = prompt[:22] + "..." if len(prompt) > 22 else prompt
         st.session_state.chats[current_id]["title"] = auto_title
 
     save_chats(st.session_state.chats)
@@ -139,12 +165,11 @@ if prompt := st.chat_input("Type a message..."):
 
     with st.chat_message("assistant"):
         if not API_KEY:
-            st.error("⚠️ API Key not found! Set GROQ_API_KEY in Render Environment Variables.")
+            st.error("⚠️ API Key not found! Configure GROQ_API_KEY in Render Environment Variables.")
         else:
             try:
                 client = Groq(api_key=API_KEY)
                 
-                # Format full context memory including system prompt for Groq API
                 formatted_contents = [SYSTEM_PROMPT]
                 for msg in st.session_state.chats[current_id]["messages"]:
                     formatted_contents.append({
@@ -152,16 +177,18 @@ if prompt := st.chat_input("Type a message..."):
                         "content": msg["content"]
                     })
                 
-                # API Call with full chat context
+                # API Call with Dynamic Setup Parameters
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=formatted_contents,
+                    temperature=temperature,
+                    max_tokens=max_tokens
                 )
                 
                 reply = response.choices[0].message.content
                 st.write(reply)
                 
-                # Save Assistant Response to Active Chat History
+                # Save Assistant Response
                 st.session_state.chats[current_id]["messages"].append({"role": "assistant", "content": reply})
                 save_chats(st.session_state.chats)
             except Exception as e:
